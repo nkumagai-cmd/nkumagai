@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>パララックス効果の絵本サイト</title>
+    <!-- Tailwind CSSを読み込み -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&display=swap" rel="stylesheet">
+    <!-- タイトル用のフォントを追加 -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        /* 基本のスタイル設定 */
+        body {
+            background-color: #f0f8ff; /* 全体の背景色 */
+            font-family: 'Helvetica', 'Arial', sans-serif; /* 英語表示のためフォントを変更 */
+            color: #333;
+            overscroll-behavior-y: none; /* スクロール境界でのバウンスを無効化 */
+        }
+
+        /* 各シーンのコンテナ */
+        .scene {
+            position: relative;
+            width: 100%;
+            height: 100vh; /* 画面の高さ100% */
+            overflow: hidden; /* はみ出した要素を隠す */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        /* シーン内の各レイヤー（要素） */
+        .layer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
+            transition: transform 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94); /* 滑らかな動きのためのトランジション */
+        }
+
+        /* テキストボックスのスタイル */
+        .story-text {
+            position: relative;
+            z-index: 100; /* テキストが一番手前に来るように */
+            background-color: rgba(255, 255, 255, 0.85);
+            padding: 2.5rem 3.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            max-width: 700px;
+            text-align: left; /* 左揃えに変更 */
+            font-size: 1.6rem; /* テキストをさらに大きく */
+            line-height: 2.8rem; /* 行間も調整 */
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        /* --- タイトル専用スタイル --- */
+        .title-text {
+            background-color: transparent;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+            box-shadow: none;
+            padding: 0;
+        }
+
+        .title-text p {
+            font-family: 'Playfair Display', serif; /* カッコいいフォントに変更 */
+            font-size: 4.5rem; /* 文字を大きくする */
+            line-height: 1.2; /* 行の高さを調整して文字の重なりを解消 */
+            font-weight: 700;
+            color: white;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7); /* 影をつけて読みやすくする */
+        }
+
+        /* --- スクロールを促すプロンプトのスタイル --- */
+        .scroll-prompt {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            color: white;
+            z-index: 100;
+        }
+
+        .scroll-prompt p {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 1.2rem; /* 少し大きくしました */
+            letter-spacing: 0.1em; /* 文字間を少し広げる */
+            text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.7);
+            margin-bottom: 15px;
+        }
+
+        .scroll-prompt .arrow {
+            font-size: 2rem; /* 少し大きくしました */
+            text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.7);
+            animation: bounce 2s infinite; /* 矢印をバウンドさせるアニメーション */
+        }
+
+        /* 矢印のバウンスアニメーション */
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+                transform: translateY(0);
+            }
+            40% {
+                transform: translateY(-15px);
+            }
+            60% {
+                transform: translateY(-7px);
+            }
+        }
+        
+        /* --- 1文字ずつのグラデーション表示アニメーション --- */
+        .story-text:not(.title-text) p .char-span {
+            display: inline-block; /* transformを適用するため */
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.8s cubic-bezier(0.23, 1, 0.32, 1), transform 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        
+        .story-text:not(.title-text) p .char-span.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* --- 単語の下線スタイル --- */
+        .underline-word {
+            border-bottom: 2px dotted transparent; /* 初期状態では下線を透明に */
+            transition: border-bottom-color 0.3s ease-in; /* 下線を滑らかに表示 */
+        }
+
+        /* --- ハイライトアイコンのスタイル --- */
+        .highlight-icon {
+            position: fixed; /* 常に画面の同じ位置に表示 */
+            top: 30px;
+            right: 30px; /* 左上から右上に変更 */
+            width: 120px; /* アイコンを大きく */
+            height: 120px; /* アイコンを大きく */
+            background-size: cover;
+            background-position: center;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            cursor: pointer;
+            z-index: 101;
+            transition: transform 0.3s, box-shadow 0.3s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .highlight-icon:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+        .highlight-icon::after {
+            content: '▶';
+            font-size: 2rem;
+            color: white;
+            text-shadow: 0 0 10px rgba(0,0,0,0.7);
+            opacity: 0.8;
+            transition: opacity 0.3s;
+        }
+        .highlight-icon:hover::after {
+            opacity: 1;
+        }
+
+        /* 画面幅が狭い場合のレスポンシブ対応 */
+        @media (max-width: 768px) {
+            .title-text p {
+                font-size: 3.5rem; /* タブレットサイズでは少し小さく */
+            }
+            .story-text {
+                padding: 1.5rem 2rem;
+                font-size: 1.3rem; /* テキストを大きく */
+            }
+            .highlight-icon {
+                width: 90px; /* アイコンを大きく */
+                height: 90px; /* アイコンを大きく */
+                top: 20px;
+                right: 20px; /* 左上から右上に変更 */
+            }
+        }
+        @media (max-width: 480px) {
+            .title-text p {
+                font-size: 2.5rem; /* モバイルサイズではさらに小さく */
+            }
+        }
+
+    </style>
+</head>
+<body>
+    
+    <!-- ハイライト動画へのアイコン（常に画面右上に表示） -->
+    <a id="highlight-icon" 
+       class="highlight-icon" 
+       href="https://sw111.tsho.jp/07jk/nh/1/070_1/" 
+       target="_blank" 
+       rel="noopener noreferrer" 
+       style="background-image: url('highlight-icon.jpg');">
+    </a>
+
+    <!-- ページ全体を包むコンテナ -->
+    <div id="main-container">
+
+        <!-- Scene 1: Title -->
+        <section id="scene1" class="scene">
+            <div class="layer" data-speed="-1" style="background-image: url('R7_NH1_U7_P1_ストーリー・スライド0.jpg');"></div>
+            <div class="story-text text-center title-text">
+                <p>An Online Tour of the U.K.</p>
+            </div>
+            <!-- スクロールを促すプロンプト -->
+            <div class="scroll-prompt">
+                <p>Scroll and discover the story</p>
+                <div class="arrow">▽</div>
+            </div>
+        </section>
+
+        <!-- Scene 2: Phone Call -->
+        <section id="scene2" class="scene">
+            <div class="layer" data-speed="-1" style="background-image: url('R7_NH1_U7_P1_ストーリー・スライド.jpg');"></div>
+            <div class="story-text">
+                <p>Eddy: Hello?<br>Anna: Hello, Eddy? This is Anna. Are you busy now?<br>Eddy: No, I’m watching TV, but I can talk. What’s up?<br>Anna: I’m thinking about <span class="underline-word">tomorrow</span>. Do you have any <span class="underline-word">plans</span>?　<br>Eddy: Tomorrow? No, I'm <span class="underline-word">free</span>. Why?</p>
+            </div>
+            <!-- このシーンの音声ファイル -->
+            <audio id="audio-scene2" src="scene2_audio.mp3" preload="auto"></audio>
+        </section>
+
+        <!-- Scene 3: The Plan -->
+        <section id="scene3" class="scene">
+            <div class="layer" data-speed="-1" style="background-image: url('R7_NH1_U7_P1_ストーリー・スライド2.jpg');"></div>
+            <div class="story-text">
+                <p>Anna: Let's visit the U.K. together.<br>Eddy: The U.K? What do you <span class="underline-word">mean</span>?<br>Anna: Well, I'm talking about an online tour.<br>Eddy: Wow, sounds fun.<br>Anna: Great. Can you come to my house at three?<br>Eddy: Sure. I'm looking <span class="underline-word">forward</span> to it.</p>
+            </div>
+            <!-- このシーンの音声ファイル -->
+            <audio id="audio-scene3" src="scene3_audio.mp3" preload="auto"></audio>
+        </section>
+        
+        <!-- Scene 4: London Market -->
+        <section id="scene4" class="scene">
+            <div class="layer" data-speed="-1" style="background-image: url('R7_NH1_U7_P2_ストーリー・スライド3.jpg');"></div>
+            <div class="story-text">
+                <p>Kate: Welcome to our online tour. I'm Kate. I'm at a <span class="underline-word">market</span> in London now. This <span class="underline-word">place</span> <span class="underline-word">appears</span> in the Harry Potter movies.<br>Eddy: Cool. What are <span class="underline-word">those</span> people doing?<br>Kate: They're taking pictures and buying <span class="underline-word">souvenirs</span>.</p>
+            </div>
+            <!-- このシーンの音声ファイル -->
+            <audio id="audio-scene4" src="scene4_audio.mp3" preload="auto"></audio>
+        </section>
+
+        <!-- Scene 5: Lake District -->
+        <section id="scene5" class="scene">
+            <div class="layer" data-speed="-1" style="background-image: url('R7_NH1_U7_P2_ストーリー・スライド4.jpg');"></div>
+            <div class="story-text">
+               <p>Jone: Hi, I'm John. I'm in the Lake District. This place is the home of Peter Rabbit!<br>Riko: Wow, I love Peter Rabbit! Are you walking around a lake?<br>John: Yes, I am. It's very beautiful.</p>
+           </div>
+           <!-- このシーンの音声ファイル -->
+           <audio id="audio-scene5" src="scene5_audio.mp3" preload="auto"></audio>
+       </section>
+    </div>
+
+    <script>
+        // ページの読み込みが完了してからスクリプトを実行
+        document.addEventListener('DOMContentLoaded', function() {
+
+            // --- 1. パララックス効果 (修正版) ---
+            window.addEventListener('scroll', function() {
+                const windowHeight = window.innerHeight;
+                const scenes = document.querySelectorAll('.scene');
+
+                scenes.forEach(scene => {
+                    const sceneRect = scene.getBoundingClientRect();
+                    
+                    // シーンが画面内に表示されているかチェックします
+                    if (sceneRect.top < windowHeight && sceneRect.bottom > 0) {
+                        // シーンの中心が画面の中心からどれだけ離れているかを計算
+                        const sceneCenterY = sceneRect.top + sceneRect.height / 2;
+                        const scrollProgress = windowHeight / 2 - sceneCenterY;
+                        
+                        const layer = scene.querySelector('.layer');
+                        if (layer) {
+                            const speed = layer.dataset.speed;
+                            // 各シーンの画面内での位置に基づいてY座標を計算し、背景を動かします
+                            const yPos = (scrollProgress * speed / 10);
+                            layer.style.transform = `translateY(${yPos}px)`;
+                        }
+                    }
+                });
+            });
+
+            // --- 2. 1文字ずつのグラデーション表示と音声再生 (修正版) ---
+            const paragraphs = document.querySelectorAll('.story-text p');
+
+            const animateText = (element) => {
+                const originalHTML = element.dataset.originalHtml;
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = originalHTML;
+                element.innerHTML = ''; // 表示エリアをクリア
+
+                let delay = 0;
+
+                // 再帰的にノードを処理して、テキストをアニメーション用のspanで囲む関数
+                function wrapChars(node) {
+                    Array.from(node.childNodes).forEach(child => {
+                        if (child.nodeType === Node.TEXT_NODE) {
+                            const text = child.textContent;
+                            const fragment = document.createDocumentFragment();
+                            text.split('').forEach(char => {
+                                if (char.trim() === '' && char !== '\n') {
+                                    // 空白文字はそのままテキストノードとして追加
+                                    fragment.appendChild(document.createTextNode(char));
+                                } else {
+                                    // 表示される文字はspanで囲む
+                                    const span = document.createElement('span');
+                                    span.textContent = char;
+                                    span.className = 'char-span'; // アニメーション用のクラス
+                                    setTimeout(() => {
+                                        span.classList.add('is-visible');
+                                    }, delay * 80);
+                                    if(char.trim() !== '') delay++;
+                                    fragment.appendChild(span);
+                                }
+                            });
+                            child.parentNode.replaceChild(fragment, child);
+                        } else if (child.nodeType === Node.ELEMENT_NODE) {
+                            // 要素ノードの場合 (e.g., .underline-word)
+                            if (child.classList.contains('underline-word')) {
+                                // 最初の文字のアニメーションタイミングで下線を表示
+                                setTimeout(() => {
+                                    child.style.borderBottomColor = '#007bff';
+                                }, delay * 80);
+                            }
+                            // 再帰的に子要素も処理
+                            wrapChars(child);
+                        }
+                    });
+                }
+                
+                wrapChars(tempDiv);
+                // 処理済みのノードを元の要素に戻す
+                while(tempDiv.firstChild) {
+                    element.appendChild(tempDiv.firstChild);
+                }
+            };
+
+            const observer = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const p = entry.target;
+                        const section = p.closest('.scene');
+
+                        if (section) {
+                            // --- 音声再生のロジック ---
+                            document.querySelectorAll('audio').forEach(audioEl => {
+                                if (!audioEl.paused) {
+                                    audioEl.pause();
+                                    audioEl.currentTime = 0;
+                                }
+                            });
+                            const currentAudio = section.querySelector('audio');
+                            if (currentAudio) {
+                                currentAudio.play().catch(error => console.log("Audio play was prevented:", error));
+                            }
+                        }
+                        
+                        // --- テキストアニメーションのロジック ---
+                        if (!p.classList.contains('is-animated')) {
+                            if (!p.closest('.story-text').classList.contains('title-text')) {
+                                animateText(p);
+                            }
+                            p.classList.add('is-animated');
+                        }
+                        observer.unobserve(p);
+                    }
+                });
+            }, {
+                threshold: 0.8 
+            });
+
+            paragraphs.forEach(p => {
+                if (!p.closest('.story-text').classList.contains('title-text')) {
+                    p.dataset.originalHtml = p.innerHTML;
+                    p.innerHTML = ''; 
+                }
+                observer.observe(p);
+            });
+
+        });
+    </script>
+
+</body>
+</html>
+
